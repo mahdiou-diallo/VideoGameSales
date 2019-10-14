@@ -1,25 +1,13 @@
 library(shiny)
 
-# get.plot.space <- function(id, parent){
-#   return(
-#     parent(
-#       fluidRow(
-#         column(4,
-#                checkboxInput(paste('plot',id,'_enable1', sep = '')),
-#                selectInput(paste('plot',id,'_varsel1', sep = ''))
-#         ),
-#         column(4,
-#                checkboxInput(paste('plot',id,'_enable2', sep = '')),
-#                selectInput(paste('plot',id,'_varsel2', sep = ''))
-#         ),
-#         plotOutput(paste('plot', id, sep = ''))
-#       )
-#     )
-#   )
-# }
+
 quali.vars <- c('Platform', 'Genre', 'Publisher')
 quanti.vars <- c('Rank', 'Year', 'NA_Sales', 'EU_Sales', 'JP_Sales', 'Other_Sales', 'Global_Sales')
 variables <- c(quanti.vars, quali.vars)
+
+genres <- sales %>% select(Genre) %>% 
+  distinct() %>%
+  arrange(Genre)
 
 navbarPage("Ventes de Jeux Videos",
            tabPanel('Exploration',
@@ -30,36 +18,43 @@ navbarPage("Ventes de Jeux Videos",
                         sliderInput('sales', label = 'Copies Vendues',
                                     min = .1, max = 90, value = c(1,25)),
                         selectInput('platform', label = 'Platform',
-                                    choices = quali.vars),
+                                    choices = c('Toutes', big.platforms, 'Autres')),
                         selectInput('publisher', label = 'Publisher',
-                                    choices = quali.vars),
+                                    choices = c('Tous', big.publishers, 'Autres')),
                         selectInput('genre', label = 'Genre',
-                                    choices = quali.vars),
+                                    choices = c('Tous', genres)),
                         h2('Criteres avances:'),
                         sliderInput('platformSales', label = 'Ventes par plateforme',
                                     min = 0, max = 1500, value = c(3,500)),
                         sliderInput('publisherSales', label = 'Ventes par publisher',
                                     min = 0, max = 1000, value = c(3,300)),
                         sliderInput('platformGames', label = 'Nombre de jeux par plateforme',
-                                    min = 1, max = 2200, value = c(200,2000))
+                                    min = 1, max = 2200, value = c(200,2000)),
+                        actionButton('apply', label = 'Appliquer')
                       ),
                       mainPanel(
                         tabsetPanel(
                           tabPanel("Graphiques",
                                    fluidRow(
                                      column(10,
+                                            tags$h3("Nuage de points"),
                                             fluidRow(
                                               column(3,
-                                                     selectInput(paste('plot',1,'_varsel1', sep = ''), label = 'Choose',
+                                                     selectInput(paste('plot',1,'_varsel1', sep = ''), label = 'Abscisse',
                                                                  choices = quanti.vars)
                                               ),
                                               column(3,
-                                                     selectInput(paste('plot',1,'_varsel2', sep = ''), label = 'Choose',
+                                                     selectInput(paste('plot',1,'_varsel2', sep = ''), label = 'Ordonnée',
                                                                  choices = quanti.vars)
+                                              ),
+                                              column(3,
+                                                     selectInput('point.label', label = 'Type de Label',
+                                                                 choices = c('Name', quali.vars))
                                               ),
                                               column(6,
                                                      checkboxInput('add.lm', 'Regression Lineaire')
                                               )
+                                              
                                             ),
                                             plotOutput(paste('plot', 1, sep = ''))
                                      ),

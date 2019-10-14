@@ -1,41 +1,37 @@
 library(shiny)
 library(tidyverse)
 
-
-init <- function(){
-  inFile <- './data/vgsales.csv'
-  sales <- read_csv(inFile, col_types = 'icfiffddddd')
-  sales <- drop_na(sales) %>%
-    filter(Year < 2016, Publisher != 'Unknown')
-  
-  big.platforms <- sales %>%
-    group_by(Platform) %>%
-    summarise(tot.games = n(),
-              tot.sales = sum(Global_Sales))  %>%
-    filter(tot.games > 20, tot.sales > 25) %>%
-    select(Platform)
-  
-  big.publishers <- sales %>%
-    group_by(Publisher) %>%
-    summarise(tot.games = n(),
-              tot.sales = sum(Global_Sales))  %>%
-    filter(tot.games > 20, tot.sales > 25) %>%
-    select(Publisher)
-  
-  sales <- sales %>% filter(Publisher %in% big.publishers$Publisher,
-                            Platform %in% big.platforms$Platform)
-  
-  print(dim(sales))
-  return(sales)
-}
-
 function(input, output) {
-  sales <- init()
-  
-  vgsales <- reactive({
-    # print(summary(sales))
-    print(dim(sales))
-    sales
+  vgsales <- eventReactive(input$apply, {
+    print(input$year)
+    print(input$sales)
+    tmp <- sales %>%
+      filter(Year >= input$year[1], Year <= input$year[2],
+             Global_Sales >= input$sales[1], Global_Sales <= input$sales[2])
+    
+    if(input$genre != 'Tous'){
+      tmp <- tmp %>% filter(Genre == input$genre)
+    }
+    
+    if(input$platform != 'Toutes'){
+      if(input$platform == 'Autres'){
+        tmp <- tmp %>% filter( !(Platform %in% big.platforms) )
+      } else {
+        tmp <- tmp %>% filter(Platform == input$platform)
+      }
+    }
+    
+    if(input$publisher != 'Tous'){
+      if(input$publisher == 'Autres'){
+        tmp <- tmp %>% filter( !(Publisher %in% big.publishers) )
+      } else {
+        tmp <- tmp %>% filter(Publisher == input$publisher)
+      }
+    }
+    
+    
+    # print(dim(tmp))
+    tmp
   })
   
   output$table.interactive <- renderDataTable({
@@ -51,8 +47,38 @@ function(input, output) {
     vgsales() %>% group_by()
   })
   
+  
   output$plot1 <- renderPlot({
-    ggplot(vgsales()) + geom_bar(aes(x = Genre))
+    plt <- ggplot(vgsales(), aes(.data[[input$plot1_varsel1]],
+                                 .data[[input$plot1_varsel2]])) +
+      geom_point(aes(color = Genre), size = 3)
+    if(input$add.lm){
+      plt <- plt + geom_smooth(method = 'lm')
+    }
+    
+    
+    top.ten.x <- vgsales() %>% arrange(desc(.data[[input$plot1_varsel1]])) %>% slice(1:10)
+    top.ten.y <- vgsales() %>% arrange(desc(.data[[input$plot1_varsel2]])) %>% slice(1:10)
+    
+    plt <- plt + 
+      geom_text(data = top.ten.x, color = 'red', alpha = .8,
+                aes(label = .data[[input$point.label]])) +
+      geom_text(data = top.ten.y, size = 4, color = 'darkblue', alpha = .8,
+                aes(label = .data[[input$point.label]]))
+      
+    
+    plt + xlab(axis.names[input$plot1_varsel1]) +
+      ylab(axis.names[input$plot1_varsel2])
+  })
+  
+  output$plot2 <- renderPlot({
+    plt <- ggplot(vgsales(), aes(.data[[input$plot2_varsel2]],
+                                 .data[[input$plot2_varsel1]])) +
+      geom_boxplot(fill = 'wheat', color = 'tomato4') +
+      geom_jitter(color = 'green', alpha = .5)
+    
+    plt + xlab(axis.names[input$plot2_varsel1]) +
+      ylab(axis.names[input$plot2_varsel2])
   })
   
   
